@@ -9,6 +9,10 @@ from scipy.optimize import curve_fit
 
 
 def exponential_func(t, n0, g):
+    '''
+    Function calculates the exponentional function for the dataframes
+    to perform forecasting.'''
+
     t = t - 1990
     f = n0*np.exp(g*t)
     return f
@@ -45,6 +49,11 @@ def err_ranges(year, exponential_func, popt, sigma):
 
 
 def greenhouse_emissions_forecast_func(df):
+    '''
+    Function implements curve_fit to produce a forecasted curve for the 
+    greenhouse gas emissions for China dataset.'''
+
+    # Formatting and cleaning the dataframe.
     df = df[['Country Name', '1990 [YR1990]', '1995 [YR1995]', '2000 [YR2000]',
              '2005 [YR2005]', '2010 [YR2010]',  '2015 [YR2015]', '2019 [YR2019]']]
     df.columns = ['Country Name', '1990', '1995',
@@ -55,37 +64,43 @@ def greenhouse_emissions_forecast_func(df):
     df = df.dropna()
     li = df.columns.values
     df = df[df['Country Name'] == 'China']
+    # Transposing the dataframe.
     df_t = pd.DataFrame.transpose(df)
     df_t = df_t.tail(-1)
     df_t.reset_index(inplace=True)
     df_t.columns = ['Year', 'GH Emission']
     df_t['Year'] = df_t['Year'].astype(int)
     df_t['GH Emission'] = df_t['GH Emission'].astype(float)
+    # Plotting the actual green house emissions curve.
     plt.plot(df_t['Year'], df_t['GH Emission'],
              label='Actual Greenhouse Emissions')
-    plt.xlabel('Years', **font2, c = 'black')
-    plt.ylabel('GreenHouse Emissions (kt)', **font2, c = 'black')
-    plt.title('Greenhouse Emissions of China & forecast', **font1, c = 'black')
+    plt.xlabel('Years', **font2, c='black')
+    plt.ylabel('GreenHouse Emissions (kt)', **font2, c='black')
+    plt.title('Greenhouse Emissions of China & forecast', **font1, c='black')
     popt, pcov = curve_fit(
         exponential_func, df_t['Year'], df_t['GH Emission'], p0=(0.27e7, 0.056))
     print("GH EMISSIONS 1990", popt[0]/1e9)
-    #plt.plot(df_t['Year'], exponential_func(
-        #df_t['Year'], *popt), label='Curved Fit')
     year = np.linspace(1990, 2030, 5)
     forecast = exponential_func(year, *popt)
+    # Plotting the forecasted curve for greenhouse emissions.
     plt.plot(year, forecast, label='Forecast curve',
              linewidth=4, alpha=0.6, color='green')
     sigma = np.sqrt(np.diag(pcov))
     low, up = err_ranges(year, exponential_func, popt, sigma)
-    plt.fill_between(year, low, up, color='yellow', alpha=0.7, label='Confidence Range')
-    plt.legend(loc = 'upper left', **font4)
-    plt.xticks(**font3,  c ='black')
-    plt.yticks(**font3, c ='black')
-    plt.savefig('greenhouse_emissions.png', dpi = 500)
+    # Plotting the confidence range.
+    plt.fill_between(year, low, up, color='yellow',
+                     alpha=0.7, label='Confidence Range')
+    plt.legend(loc='upper left', **font4)
+    plt.xticks(**font3,  c='black')
+    plt.yticks(**font3, c='black')
+    plt.savefig('greenhouse_emissions.png', dpi=500)
     plt.show()
-    
+
 
 def scaler_func(df):
+    '''
+    Function is used to normalize or scale the columns of the dataset.'''
+
     scaler = MinMaxScaler()
     scaler.fit(df[['1990']])
     df['1990'] = scaler.transform(df[['1990']])
@@ -95,8 +110,13 @@ def scaler_func(df):
 
 
 def silhouette_score_func(df):
+    '''
+    Function is used to calculate the silhouette_score to calculate the 
+    number of clusters for each dataset.'''
+
     score = []
     n_of_cluster = []
+    # Calculating silhouette score for number of clusters between 2 and 12.
     for n in range(2, 12):
         km = KMeans(n_clusters=n)
         km.fit(df)
@@ -108,6 +128,10 @@ def silhouette_score_func(df):
 
 
 def co2_emissions_cluster_func(df):
+    '''
+    Function is used to perform clusterinf on the co2 emissions dataset.'''
+
+    # Formatting and cleaning the dataframe.
     df = df[['1990 [YR1990]', '2019 [YR2019]']]
     df.columns = ['1990', '2020']
     li = df.columns.values
@@ -117,34 +141,42 @@ def co2_emissions_cluster_func(df):
     li = df.columns.values
     for i in li:
         df[i] = df[i].astype(float)
+    # Calling the function to scale or normalize the dataset.
     df = scaler_func(df)
+    # Calling the function to calculate the number of clusters.
     n_cluster, silhouette_score = silhouette_score_func(df)
     print('\t Clustering CO2 EMissions in (kt)')
     print('Maximum Silhouette Score is : ', +silhouette_score)
     print('Number of Clusters is : ', +n_cluster)
+    # Using KMeans to perform clustering.
     km = KMeans(n_clusters=n_cluster)
     y_predicted = km.fit_predict(df[['1990', '2020']])
     df['cluster'] = y_predicted
     df_cluster1 = df[df.cluster == 0]
     df_cluster2 = df[df.cluster == 1]
     df_cluster3 = df[df.cluster == 2]
+    # Plotting the graphs.
     plt.scatter(df_cluster1['1990'], df_cluster1['2020'],
                 color='green', label='Cluster1')
     plt.scatter(df_cluster2['1990'], df_cluster2['2020'],
                 color='red', label='Cluster2')
     plt.scatter(km.cluster_centers_[:, 0], km.cluster_centers_[
                 :, 1], color='purple', marker='*', label='Centroid')
-    plt.xlabel('1990', **font2, c = 'black')
-    plt.ylabel('2020', **font2, c= 'black')
-    plt.title('CO2 Emissions (kt)', **font1, c = 'black')
-    plt.xticks(**font3,  c ='black')
-    plt.yticks(**font3, c ='black')
+    plt.xlabel('1990', **font2, c='black')
+    plt.ylabel('2020', **font2, c='black')
+    plt.title('CO2 Emissions (kt)', **font1, c='black')
+    plt.xticks(**font3,  c='black')
+    plt.yticks(**font3, c='black')
     plt.legend(**font4)
-    plt.savefig('c02_emissions.png', dpi = 500)
+    plt.savefig('c02_emissions.png', dpi=500)
     plt.show()
 
 
 def methane_emissions_cluster_func(df):
+    '''
+    Function performs clustering on the methane emissions dataset.'''
+
+    # Formatting and cleaning the dataframe,
     df = df[['1990 [YR1990]', '2019 [YR2019]']]
     df.columns = ['1990', '2020']
     li = df.columns.values
@@ -154,34 +186,42 @@ def methane_emissions_cluster_func(df):
     li = df.columns.values
     for i in li:
         df[i] = df[i].astype(float)
+    # Calling the function to scale or normalize the dataset.
     df = scaler_func(df)
+    # Calling the function to calculate the number of clusters.
     n_cluster, silhouette_score = silhouette_score_func(df)
     print('\t Clustering Methane EMissions in (kt)')
     print('Maximum Silhouette Score is : ', +silhouette_score)
     print('Number of Clusters is : ', +n_cluster)
+    # Using KMeans to perform clustering.
     km = KMeans(n_clusters=n_cluster)
     y_predicted = km.fit_predict(df[['1990', '2020']])
     df['cluster'] = y_predicted
     df_cluster1 = df[df.cluster == 0]
     df_cluster2 = df[df.cluster == 1]
     df_cluster3 = df[df.cluster == 2]
+    # Plotting the visualizations.
     plt.scatter(df_cluster1['1990'], df_cluster1['2020'],
                 color='green', label='Cluster1')
     plt.scatter(df_cluster2['1990'], df_cluster2['2020'],
                 color='red', label='Cluster2')
     plt.scatter(km.cluster_centers_[:, 0], km.cluster_centers_[
                 :, 1], color='purple', marker='*', label='Centroid')
-    plt.xlabel('1990', **font2, c = 'black')
-    plt.ylabel('2020', **font2, c = 'black')
-    plt.title('Methane Emissions (kt)', **font1, c = 'black')
-    plt.xticks(**font3,  c ='black')
-    plt.yticks(**font3, c ='black')
+    plt.xlabel('1990', **font2, c='black')
+    plt.ylabel('2020', **font2, c='black')
+    plt.title('Methane Emissions (kt)', **font1, c='black')
+    plt.xticks(**font3,  c='black')
+    plt.yticks(**font3, c='black')
     plt.legend(**font4)
-    plt.savefig('methane_emissions.png', dpi = 500)
+    plt.savefig('methane_emissions.png', dpi=500)
     plt.show()
 
 
 def agri_forest_land_cluster_func(df1, df2):
+    '''
+    Function performs clustering on the agriculture land and forest land date.'''
+
+    # Formatting and cleaning the dataframe.
     df1 = df1[['2019 [YR2019]']]
     df1.columns = ['Agri_Land']
     df1['Agri_Land'].replace('..', np.nan, inplace=True)
@@ -201,15 +241,18 @@ def agri_forest_land_cluster_func(df1, df2):
     df = pd.DataFrame()
     df['Forest_Land'] = forest_land
     df['Agri_Land'] = agri_land
+    # Performing scaling to normalize the values.
     scaler = MinMaxScaler()
     scaler.fit(df[['Forest_Land']])
     df['Forest_Land'] = scaler.transform(df[['Forest_Land']])
     scaler.fit(df[['Agri_Land']])
     df['Agri_Land'] = scaler.transform(df[['Agri_Land']])
+    # Calculating the number of clusters.
     n_cluster, silhouette_score = silhouette_score_func(df)
     print('\t Clustering Agriculture Land vs Forest Land')
     print('Maximum Silhouette Score is : ', +silhouette_score)
     print('Number of Clusters is : ', +n_cluster)
+    # Using KMeans to perform clustering.
     km = KMeans(n_clusters=n_cluster)
     y_predicted = km.fit_predict(df[['Forest_Land', 'Agri_Land']])
     df['cluster'] = y_predicted
@@ -217,6 +260,7 @@ def agri_forest_land_cluster_func(df1, df2):
     df_cluster2 = df[df.cluster == 1]
     df_cluster3 = df[df.cluster == 2]
     df_cluster4 = df[df.cluster == 3]
+    # Plotting the visualizations.
     plt.scatter(df_cluster1['Forest_Land'],
                 df_cluster1['Agri_Land'], color='green', label='Cluster1')
     plt.scatter(df_cluster2['Forest_Land'],
@@ -227,17 +271,20 @@ def agri_forest_land_cluster_func(df1, df2):
                 df_cluster4['Agri_Land'], color='yellow', label='Cluster4')
     plt.scatter(km.cluster_centers_[:, 0], km.cluster_centers_[
                 :, 1], color='purple', marker='*', label='Centroid')
-    plt.xlabel('Forest Land', **font2,  c ='black')
-    plt.ylabel('Agriculture Land', **font2,  c ='black')
-    plt.title('Forest land vs Agri. land', **font1, c ='black')
-    plt.xticks(**font3,  c ='black')
-    plt.yticks(**font3, c ='black')
-    plt.legend(bbox_to_anchor=(1.001, 1),**font4)
-    plt.savefig('agri_vs_forest.png', dpi = 500)
+    plt.xlabel('Forest Land', **font2,  c='black')
+    plt.ylabel('Agriculture Land', **font2,  c='black')
+    plt.title('Forest land vs Agri. land', **font1, c='black')
+    plt.xticks(**font3,  c='black')
+    plt.yticks(**font3, c='black')
+    plt.legend(bbox_to_anchor=(1.001, 1), **font4)
+    plt.savefig('agri_vs_forest.png', dpi=500)
     plt.show()
 
 
 def read_files():
+    '''
+    Function reads all the csv files into pandas dataframe.'''
+
     greenhouse_emissions = pd.read_csv('Total_GreenHouse.csv')
     co2_emissions = pd.read_csv('CO2_Emissions.csv')
     methane_emissions = pd.read_csv('Methane_Emissions.csv')
@@ -247,11 +294,13 @@ def read_files():
     co2_emissions_cluster_func(co2_emissions)
     methane_emissions_cluster_func(methane_emissions)
     agri_forest_land_cluster_func(agri_area, forest_area)
-    
-font1 = {'fontsize' : 16}
-font2 = {'fontsize' : 14}    
-font3 = {'fontsize' : 13}
-font4 = {'fontsize' : 11}
 
-plt.style.use('ggplot') 
+
+# Setting the fontsize to format the visualization.
+font1 = {'fontsize': 16}
+font2 = {'fontsize': 14}
+font3 = {'fontsize': 13}
+font4 = {'fontsize': 11}
+
+plt.style.use('ggplot')
 read_files()
